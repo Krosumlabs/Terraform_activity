@@ -1,0 +1,651 @@
+input 	=> variable.tf   filename.tfvars  exported  ...
+|
+variable "variablename" {}
+
+output
+output "variablename" {}
+
+locals - like unnamed variable block - like function call
+	 -------------------------
+Syntax:-
+-------------
+locals {
+	userdefinedKey = Value
+}		            [    ]
+
+local.userdefinedKey[index]
+
+locals {
+  ami = {
+    filter = ["cassandra-BASE-v*"]
+    owners = [data.aws_caller_identity.current.account_id]
+  }
+}
+local.ami.filter[0]
+local.ami[filter][0]
+
+
+variable "server1" {	         locals{
+  default = "OL7"	 Vs	server1="OL8"
+}		         }
+
+var.server1		       local.server1
+|_OL7			|__OL8
+
+variable "server1" {			locals{
+     default  = ["RHL5","RHL6"]	Vs 	    server1 = ["OL5","OL6"]
+}				}
+var.server1[0] =>RHL5		local.server1[0] =>OL5
+var.server1[1] =>RHL6		local.server1[1] =>OL6
+
+
+list 	=> [  ]
+tuple	=> ( ) 
+
+variable "serverinfo"{
+	type = list(string)	
+	default = ['RHL5','RHL6','OL5','OL6']
+}
+variable "serverinfo" {
+	type = tuple(string,int,float,bool)
+	default = ('RHL5',6,6.4,true)
+}
+var.<variablename>.[index] <== sequential type (list,tuple) # var.<variablename>.index
+
+variable "serverinfo"{
+	type = list(string)	
+		     0          1         2       3           0        1
+	default = [['RHL5','RHL6','OL5','OL6'],['Dev1','Dev2']]  <== MD
+}	                |-------------0--------------------|--------1--------|
+
+output result {
+	value = var.serverinfo[0]  => ['RHL5','RHL6','OL5','OL6']
+}
+
+output result {
+	value = var.serverinfo[0][2]  # var.serverinfo.0.2
+}
+--------------------------------------------------------------------------------------------------------------
+map - collection of values where each value is identified by a string label. 
+variable "serverinfo" {
+	type = map
+	default = {
+		dev = "OL7"
+		test = "OL8"
+	}
+}
+output result {
+	value = var.serverinfo[dev]  =>OL7  # value = var.serverinfo.dev 
+}
+
+object - an object is a structural type that can contain different types of values unlike map,list .
+  |-->  it is a collection of named attributes that each have their own type.
+				  -------------------------------
+variable "serverinfo"{
+	type = object({
+	     dev = string
+	     test = string 
+	     version = int
+	})
+}
+--------------------------------------------------------------------------------------------------------------------------------
+
+locals {
+   location = "mumbai" 
+   storage_account = {
+	tier = "standard"
+	tls = 1.2
+  }
+}
+
+using output block  - display tier and tls value
+--------------------------------------------------------------------
+variable "variablename" {
+	type = <determine type>
+	default = <value>
+}
+using output block  - display tier and tls value
+
+--------------------------------------------------------------------------------------------------------------------------
+file: main.tf 
+resource "resourcename" "label" {
+	Key1 = Value
+	Key2 = var.<variablename>
+}
+
+variable "variablename" {}	 => file :  p1.tfvars
+			                variablename = value 
+              
+terraform plan -var-file="p1.tfvars"
+terraform apply -var-file="p1.tfvars"
+
+--------------------------------
+file : main.tf
+resource "oci_compute_instance"  "devinstance" {
+	shape = var.instance_type
+}			
+
+variable.tf
+----------------
+variable "instance_type" {}
+
+file: p1.tfvars
+---------------------
+instance_type = "VM1"
+
+terraform plan -var-file="p1.tfvars"
+----------------------------------------------------------------------------------------------------------------------------------
+locals - block 
+
+locals {  <=== 's'
+	shape="VM.1"
+	result = split(":","root:x:bin")
+}
+output "results" {
+	value = local.shape <== there is no ends with 's'  
+}
+output "display" {
+	value = local.result
+}
+
+-------------------------------------------------------------------------------------------------------------------------------------
+Regx 
+ - search 
+ - substitute 
+ ----------------------//operation 
+grep,sed,awk - commands
+=~ !~ - operators
+
+regex()
+regexall() 
+--------------//functions - in TF
+
+in linux commandline 
+grep "^a" inputfile 
+	Vs
+in TF => regex("^a","inputstring")
+		 
+
+1.Basic Regx Expression - single 		2.Extended Regx Expression - more than one pattern 
+
+^pattern   => ^apache  - starts with		|	()	+	{}
+					
+pattern$	    apache$  - ends with		pattern1| pattern2 - any one pattern is matched 
+									
+^pattern$ 	   ^apache$ - pattern only 		(pattern1)(pattern2) - both pattern should match in same order
+					
+.(dot)	=> any one single char (except \n)	<Pattern>+ => 1 or more times
+					
+*	=> list of all 			<Pattern>{n} - n times		
+[ ]	=> character class			[0-9]{5}
+---					<pattern>{n,} - minimum 'n' times maximum nolimit
+ |-> match any one single char 			<Pattern>{n,m} - minimum 'n' times and maximum 'm' times
+					[0-9]{5,7}
+[oci] => match the character 'o'  (or) 'c' (or) 'i'		^[A-Za-z0-9]{3,6}$
+  ---
+[a-z]
+[A-Z]
+[a-zA-z]
+[0-9]
+[a-zA-Z0-9]
+
+[Aa][Rr]un
+----------------> ARun Arun aRun arun //OK
+ ^[a-z]	- line starts with any lowercases
+   [a-z]$      - line ends with any lowercase 
+
+ [a-z] - match any lower case chars
+ ^[a-z]  - match line starts with any lowercase chars
+ 
+  [^a-z] - NOT matching any lowercase chars
+    
+ [^a-zA-Z0-9\s] - match specialchars only 
+
+\s - space 
+
+[0-9] --- same as -- \d 
+[^0-9] -- same as -- \D
+
+
+
+-------------------------------------------------------------------------------------------------
+variable "mymsg" {
+	default = <<EOF
+		....
+		....
+		....
+EOF
+}
+output "result" {
+	value = mymsg
+}
+---------------------------------------------------------------------------------------------------
+TF Supports Fundamental operators
+ 1. arithmetic operators  + - * / % (supports int,float type)    => number 
+
+ 2. relational operators  == != < <= > >= (supports int,float,str)  =>true,false (bool type)
+        - single test
+
+ 3. logical operators
+           && ||  !  	(supports int,float,str)  =>true,false (bool type)
+       - more than one test - in one line,test more than one condition - use logical operators 
+	var.img == "OracleLinux8"  && var.version >7.1 
+	 ---------			------------
+
+How to test this condition in TF file ?
+Syntax:-
+------------
+	<expression> ? true operation  : false operation
+	   ( or )	
+	 condition 
+
+ var.img == "OracleLinux8"  && var.version >7.1  ? "OK" : "Not-OK"
+
+<blocktype> <label> <label2>{
+	Key = Expression
+	Key = functioncall_return value
+}
+	
+resource "oci_compute_instance" "instance" {
+	...
+	....
+  shape_config { # nested (or) inner block 
+    // If shape name contains ".Flex" and instance_flex inputs are not null, use instance_flex inputs values for shape_config block
+    // Else use values from data.oci_core_shapes.current_ad for var.shape
+    memory_in_gbs             = local.shape_is_flex == true && var.instance_flex_memory_in_gbs != null ? var.instance_flex_memory_in_gbs : local.shapes_config[var.shape]["memory_in_gbs"]
+    ocpus                     = local.shape_is_flex == true && var.instance_flex_ocpus != null ? var.instance_flex_ocpus : local.shapes_config[var.shape]["ocpus"]
+    baseline_ocpu_utilization = var.baseline_ocpu_utilization
+  }
+	...
+}
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+locals {
+	shape_is_flex = true
+}
+variable "instance_flex_memory_in_gbs" {
+	default = "45gb"
+}
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------		
+variable "L" {
+	type = list
+	default = ["a", "b", "c"]
+}
+var.L[1]  (or) var.1
+
+ Vs
+
+functioncall() =>["a", "b", "c"]
+   (or)	          ____________
+execution result 	|- not named by any variable block (or) local block
+
+element(["a", "b", "c"],1) => 'b'
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------		
+meta-arguments 
+----------------------
+count
+for_each
+depends_on
+provider
+================//used in resource block 
+Resource block in TF, by default - this specifies one resource that will be created.
+
+resource "oci_vcn ...." {	resource "oci_compute_..."{
+ count = 3				count = 2
+}			}
+
+for_each  -  map type value
+
+for_each = {Key1=Value}
+	
+---------------------------------------------------------------------------------
+   
+for v in <collection>{
+	v
+}
+
+for i in data.oci_identity_availability_domains.ad.availability_domains : i.name
+
+for i in data.oci_identity_availability_domains.ad.availability_domains 
+	i.name
+---------------------------------------------------------------------------------
+
+provider  "oci"{
+	region = "us-east"
+}
+provider "oci" {
+	region = "us-west"
+}
+
+||
+
+provider  "oci"{
+	region = "us-east"
+	alias ="europe"
+}
+provider "oci" {
+	region = "us-west"
+	alias= "euro"
+}
+
+To access provider 
+-------------------------
+Syntax:-
+provider.<alias>
+		
+resource "oci_compute_instance" "instance"{
+	provider = oci.europe <==
+}	^^^^^^^^
+
+resource "oci_compute_instance" "instance"{
+	provider = oci.europe <==
+	^^^^^^^^
+	count = Number
+	for_each {
+		mapvalue
+	}		
+	depends_on {
+		resource_name 
+	}
+}
+--------------------------------------------------------------------------------------------------------------------------------------
+locals {
+users = [
+    { # user1
+      name        = "tf_example_user1@example.com"
+      description = "user1 created by terraform"
+      email       = null
+    },
+    { # user2
+      name        = "tf_example_user2@example.com"
+      description = "user2 created by terraform"
+      email       = "tf_example_user2@example.com"
+    },
+    { # user3
+      name        = "tf_example_user3@example.com"
+      description = "user3 created by terraform"
+      email       = "tf_example_user3@example.com"
+    }, # add more users below if needed
+  ]		
+}				outpute "result"{
+}					value = local.users[1]["email"] # local.users.1.email
+				}
+		
+	
+variables "users" {
+ type = list(map)
+default  = [
+    { # user1
+      name        = "tf_example_user1@example.com"
+      description = "user1 created by terraform"
+      email       = null
+    },
+    { # user2
+      name        = "tf_example_user2@example.com"
+      description = "user2 created by terraform"
+      email       = "tf_example_user2@example.com"
+    },
+    { # user3
+      name        = "tf_example_user3@example.com"
+      description = "user3 created by terraform"
+      email       = "tf_example_user3@example.com"
+    }, # add more users below if needed
+  ]		
+}				output "result"{
+}					value = var.users[1]["email"] # local.users.1.email
+				}
+---------------------------------------------------------------------------------------------------------------------------------------------
+TF modules
+----------------
+A TF module is a set of  TF configuration files in a single directory.
+
+mkdir vcn-activity/ <== TF root-module directory 
+	           |__main.tf
+	           |__provider.tf
+		..
+	           |__readme.md
+	           |___Sub-dir1
+		       |__..
+module - reusing existing TF config
+---------
+
+module "modulename" {
+
+	
+}
+
+module "VPC" {
+	source = "terraform-aws-modules/...." <== 
+	name = "vpc-using TF"
+}
+--------------------//main.tf
+mkdir D1
+cd D1
+vi p1.tf
+...
+
+
+module "server" {
+	count = 5
+	some_var = "test-value"
+	source = "../D1	
+}
+
+
+----------------------------------------------------------------------
+Project/
+         |-- main.tf  - resource 
+         |-- variable.tf - variable details
+         |-- output.tf  - output details 
+          
+        terraform init
+        terraform plan
+        terraform apply
+
+        mkdir S1
+        cd S1
+              |___file: p1.tf 
+	   module  "my-module" {
+		source = "/home/opc/Project/"
+		....
+	   }
+	 
+	        terraform init
+	        terraform plan
+	        terraform apply
+	
+
+
+file: compute.tf <== File 
+        --------------
+	|
+	|
+	execution of state of this file - process
+		|
+		[Ready-Running]
+
+file: compute.tf <== File <== delete this file
+        --------------
+	|
+	|
+	execution of state of this file - process
+		|
+		[Ready-Running]
+----------------------------------------------------------------------------------------------------------
+Terraform provisioners 
+-----------------------------
+Provisioners are used for executing commands (or) script on a local (or) remote machine as part of
+resource creation/deletion. 
+
+local m/c - local-exec => run a script (or) command on instance where we are running our terraform code,
+		    not on the resource we are creating.
+
+resource "oci_compute_instance" "oci" {
+	..
+	..
+	provisioner "local-exec" {
+		command = "echo ${oci_compute_instance.oci.public_ip} >> public_ip.log"
+	}
+}
+remote-exec -  invoke command (or) script on the remote m/c. once resource is created it.
+----------------						
+resource "oci_compute_instance" "oci" {
+	..
+	..
+	provisioner "remote-exec" {
+		inline = ["sudo yum -y install httpd", "sudo systemctl start httpd" ]
+	}
+}
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------
+Ansible 
+--------------
+  => Configuration management 
+        ^^^^^^^^^^^^^^^^^^^^^^
+	=> test/check the machine state  
+	ex: create a new user 		- user is already exists
+				
+useradd userA   //command line (or) script 	Vs	test the user is exists or not
+Sorry userA already exists				        |	    |___create user account
+						already exists		|
+								display ack
+					m/c state:    not-changed	changed 
+
+ TF =>Infrastructure
+	|
+	|- install a software package	}
+	|- update a software package	}	Ansible 
+	|- uninstall a software package	}
+	|
+	|- install a webserver - create a config file - start a webserver - write index.html file - launch an application - Ansible 
+		===(1)	=(2)		 (3)		(4)		(5)
+
+-----------------------------------------------------------------------------------------------------------------------------------
+Ansible 
+- python 2.x (or) python 3.x - depends on 
+
+- ansible - module is real python code
+
+- not depends on any daemon ( like service file)
+
+	+-------------------------------------+		SSH
+	|   ansible (core)	              | 	------------net------------[ node1 ] (any os)
+	|		              |	------------------------[ node2 ] (winx)
+	+--------------------------------------+ ...............................................//multiprocessing 
+	  # control system (or) m/c 
+	  # ^^^^^^^^^^^^^^^^^^^^^
+	  # Linux like os  =>fork() - create a new processs
+		             ^^^^^^
+	# /etc/ansible/ansible.cfg 
+		         |
+		     map to inventory file - contains list of remote node details
+			|_format is INI format
+
+	# inventory file 
+	# playbook file 
+
+ansible ad-hoc command - one time execution
+|
+ansible playbook => yaml file
+	|
+	file: p1.yaml 
+  
+python --version 
+	(or)
+python3 --version
+
+pip3 install ansible
+-----  ------- ======
+opc@terraform server ~]$ sudo pip3 install ansible
+
+opc@terraform server ~]$
+
+mkdir Demo
+cd Demo
+vi ansible.cfg {Enter}
+[defaults]
+inventory = myinventory
+	 ^^^^^^^^^^^
+	   user defined
+:wq 
+
+vi myinventory {enter}  <== custome inventory file 
+[webservers]
+node1 
+node2
+node3
+[QA]
+node4
+node5
+:wq
+  
+ansible  node1 -m ping  # node 1 reachable or not
+
+ansible webservers -m ping  # test all 3 nodes are reachable or not 
+	                   -----
+		   |--ping is a ansible module (i.e., ping.py)
+
+adhoc commands
+------------------------
+ansible <remotehost>  -m <module> -a "arguments"
+ansible localhost -m command -a "uptime"
+
+YAML 
+-----------
+Key:  Value 
+
+---
+- hosts:  <remotehost>
+  tasks:
+  - name:  
+    module:  <arguments>
+----------------------------------------//p1.yml
+
+ansible-playbook p1.yml 
+
+
+
+	+-------------------------------------+		SSH
+	|   ansible (core)	              | 	------------net------------[ node1 ] (any os)
+	|		              |	------------------------[ node2 ] (winx)
+	+--------------------------------------+ ...............................................//multiprocessing 
+	  # control system (or) m/c 
+	  # ^^^^^^^^^^^^^^^^^^^^^
+	  |
+	Ctrl M/C (parent python) =========establish connection to remote m/c (SSH) ===========[node]
+			|_____________________________________________________
+								subshell(/bin/sh)
+								  |
+			|___________push the ansible module____________   create a python(child)
+									|
+								        module will execute
+									|
+								           .......
+									|
+		____________________________________________________________|
+					json format <==
+							 	 exit
+			
+Terraform				Vs			Ansible
+-------------							-------------
+IaC - provisioning						IaC - Configuration Management
+Client only							Client <==> Server 
+Infrastructure						On the top of the resource(infra)
+							 install/uninstall/update - software management 
+immutable							mutable
+declarative code						procedure code style 
+go							python
+							
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ansible - architecture
+|
+adhoc commands
+|
+YAML
+|
+playbook
+|
+roles 
+|
+collection - galaxy 
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

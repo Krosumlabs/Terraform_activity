@@ -1,0 +1,441 @@
+IaC
+-----
+ p1.sh
+ p1.pl
+ p1.py
+ ---------//script => automation in programming manner 
+  Vs
+p1.yml (ansible) =>    automation - procedure style         
+
+
+file: p1.sh
+
+if [ `whoami` == "root" ];then
+useradd <username>  >/dev/null 2>&1
+if [ $?  -eq 0 ]
+then
+	...		Vs	ansible <host> -m user -a "name=<username> state=present"
+else
+	...
+fi
+fi
+--------------------------------------------------------------------------------------
+							
+				           <================Ansible===============>
+[Initial Infra structure setup ] => [Manage Infra ] => [Initial Application setup ] => [Manage Application ]
+|<=====================================================>|		
+			Terraform 
+
+Configuration Management - existing infrastructure - procedure design  - mutable 
+  Vs
+Provisioning Tools - Designed to build the infrastructure  - declarative  - immutable 
+
+
+			providers
+  [Mysystem] ------- TF ---------[GitHub-repo]
+			plugins + APIs 
+  [Mysystem]-------- TF ---------[OCI - LB ]
+  [Mysystem] --------TF ---------[aws - EC2]
+  [Mysystem]---------TF---------[InfluxDB]
+
+ 		TF  ---------API--------------> [Cloud ]
+		         ----------<--------------
+		     ------------keys------------------->	
+		         --------<-----------------
+		  ----------------------create  these resource------->
+			--------<--------------------
+			  ok let me check with IAM
+			----------<----------------------------
+				Authorized
+			-------------------->-------create will created
+	then state file will generated
+	        -----------
+		|- json format
+
+1. TF does not install any provider plugin by default 
+2. to download provider - write provider block in provider file (f1.tf (or) providers.tf)
+
+---------------------------------------------------------------------------------------
+step 1:  create a file - write HCL to build your infrastructure (f1.tf)
+
+step 2:  download the provider plugins => terraform init  
+|				|
+step 3: test your working directory   =>  .terrform - provider plugin details
+|
+step 4: terraform plan  - preview of real infra 
+|
+step 5: terraform apply 
+
+init => validate => plan => apply  =>destroy
+ 
+terraform  init 
+terraform validate 
+terraform plan
+terraform apply
+terraform destroy 
+-----------------------------------------------------------------------------------------------------------------------------------------------
+
+-root@host~]# mkdir TF_Activity <== Terraform directory (or) root directory (or) working directory (or) manifests directory
+root@host~]# cd TF_Activity
+root@host TF_Activity]# ls -a 
+.  ..
+root@host TF_Activity]# vi p1.tf 
+....
+....
+:wq
+
+root@host TF_Activity]# ls -a
+p1.tf   .  ..
+
+root@host TF_Activity]# terraform plan {enter} 
+Error 
+
+root@host TF_Activity]# terraform init {Enter}
+
+root@host TF_Activity]# ls -a
+p1.tf   .  .. .terraform 
+
+root@host TF_Activity]# terraform validate {Enter}
+ok 
+root@host TF_Activity]# terraform plan {enter} 
+..
+
+root@host TF_Activity]# terraform apply {enter} 
+.. OK
+
+root@host TF_Activity]# ls -a
+. .. .terraform file.state p1.tf
+
+--------------------------------------------------------------------------------------------------------------------
+		TF Top level Blocks
+		
+Fundamental Blocks	     	Variable  Blocks		Calling /Referencing Blocks
+
+|->Terraform block		Input variable block		Data source block
+|->Provider block		output variable block		Modules block
+|->Resource block		Local value block		
+
+--------------------------------------------------------------------------------------------------------------------
+for winx
+--------------
+set PATH=%PATH%;"C:\programfiles\terraform"
+
+for linux
+-------------
+wget https://releases.hashicorp.com/terraform/1.5.3/terraform_1.5.3_linux_arm.zip
+
+---------------------------------------------------------------------------------------------------------------------------------
+Test terraform version 
+terraform --version {Enter}
+---------------------------------------------------------------------------------------------------------------------------------------------
+Hashicorp Configuration Language (HCL) 
+file extension is .tf 
+
+file.tf	--------- follows Hashicorp rules 
+file.tf.json  --------- follows json rules 
+
+HCL => TF => Blocks , Arguments , identifiers,comments etc.,
+		   Key = Value 
+Syntax:-
+------------
+<BlockType>   "<BlockLabel>" .. "<Block Label>" {
+	# Block body
+	<identifier> = <expression (or) value> <== Arguments
+}
+
+Example:
+-----------	
+resource "local_file" "foo" {	<== Block Type is resource   ; local_file and foo - block labels
+  content  = "foo!"
+  filename = "message"
+}------------    ===========
+     |		|__ user defined value 
+ pre-defined - blocktype specific 
+
+Depends on the Block Type  => block labels will be 1 or 2 
+
+variable  myvar { 
+}             -------
+	|-> block label 
+
+Example:  Resource block  - 2 labels 
+                 Variable block  - 1 label 
+
+
+
+Block  <BlockLabel>{	<== Outer Block
+	...
+	Block  <BlockLabel>{	<== Nested Block
+		...
+	}
+}
+
+Comments 
+----------------
+# single line comment  (or)    // Single line comment 
+
+/* Multiline 
+    comments
+*/
+-------------------------------------------------------------------------------------------------------------------------------------------
+Create a new directory (ex: mkdir  TFClass 
+
+Go to the directory  (ex: cd TFClass 
+
+Check the list of files (ex:  dir  (or) ls -a )  - empty directory 
+ |
+ |
+Create one subdirectory ( ex:  mkdir case1  => cd case1 => ls -a (or) dir )
+
+Resource name is   local_file 
+	
+TFClass
+  |__ case1 
+              |____file:  p1.tf
+	     resource "local_file" "myfile" {
+  	     content  = "This test instance from TF"
+  	     filename = "/tmp/t1.log"
+ 	 }
+	
+	terraform plan {Enter}
+	# see the error message
+
+	terraform init {enter}
+	
+	ls -a (or) dir 
+                  # explore .terraform directory	
+	terraform plan {Enter}
+		
+	# see the symbols + ~ - 
+	
+	ls -a (or) dir
+	
+	terraform apply {enter}
+	 ..
+	 yes
+	 ls -a (or) dir
+	 # read the terraform state file - json format 
+	 |
+	edit this file 
+	file:  p1.tf
+	     resource "local_file" "myfile" {
+  	     content  = "This test instance from TF"
+  	     filename = "/tmp/t1.log" # "D:\\t1.log"
+	     file_permission = "0700"
+ 	 }
+	terraform plan {Enter}
+	# see the symbols 
+	 terrform apply {enter}
+	
+	# read the state file - see the permission flag
+	
+----------------------------------------------------------------------------------------------------------------------------------------------
+
+		TF Top level Blocks
+		
+Fundamental Blocks	     	Variable  Blocks		Calling /Referencing Blocks
+
+|->Terraform block		Input variable block		Data source block
+|->Provider block		output variable block		Modules block
+|->Resource block		Local value block		
+
+variable block 
+--------------------
+variable "userdefined-label name" {
+	pre-defiend-Key = userdefined-value 
+}	
+	
+variable - place holder (or) label (or) which is holding a value 
+
+in shell script => Fname="/etc/passwd"
+	          echo Fname => Fname
+	          echo $Fname =>/etc/passwd
+
+Fname="/var/log/test.log"		=> variable Fname  {
+					  default = "/var/log/test.log"
+				      }
+echo $Fname => /var/log/test.log	=> resource "local_file"  "myfile" {
+					filename = var.Fname
+					content = "Test message"
+				     }
+			  	
+main.tf 
+ |_ resource "local_file"  "myfile" {
+	filename = var.Fname
+	content = "Test message"
+}
+variable.tf
+|__ variable Fname {
+	default = "/var/log/test.log"
+      }				
+
+----------------------------------------------------------------------------------------------------------------------------------------------------
+ 
+output "userdefinedLabel" {
+	value = <user defined value>
+}		     
+
+variable "Fname" {
+	default = "/etc/passwd"
+}
+output "Result" {
+	value = var.Fname
+}		
+----------------------------------------------------------------------------------------------------------------------------------------------------
+To pass input variable from commandline 
+terraform apply  -var="Variable=Value"
+
+example:
+----------
+terraform apply  -var="Fname=/tmp/p.java"
+
+		
+output "result" {        		variable  "inputName" {
+   value = ""		default = ""
+   description = ""		description = ""
+   type = valuetype		type = valueType
+   sensitive =  true		sensitive = true
+}			}
+----------------------------------------------------------------------------------------------------------------------------------------------------		
+Types 
+------------
+  string 	    - sequence of chars  "Ab123$%^  3a {IP = "10.20.30.40", status = true } [D1,D2] "
+  number	    -  15 16 0 15.23 -234.23
+  boolean	    -   true (or) false 
+  null 	    
+  --------------------//single value  (or)  primitive types 
+
+   list 	-  [] => ["us-west" , "us-east"]	=> ["D1","D2","D3","D4","D5"]
+				         0       1       2       3       4 <== index
+				     [index] -> nth index
+
+   set				          
+   object
+   tuple 	=>( )
+   map ===================> {IP = "10.20.30.40", status = true }  
+  --------------------//collection - more than one value (or) complex types (or) structure  types 
+ 	
+  type casting - we can change from current type to new type (or) target type
+ 
+ variable "myos" {
+	type = string(50)  <== typecasting
+ }		
+ variable "myenv" {
+	type = list("OL7") <== typecasting
+	default = ["OL7" ]		
+}
+
+Arguments:
+-------------------
+default  - default value  
+type - specifies what value types are accepted for the variable 
+description - documentation 
+sensitive - hide this value 
+
+terraform apply -var="myos=OL7"
+terraform apply -var="myos=[OL7,OL8,OL9]	"
+terraform apply -var="myos={"K1"="OL7","K2"="OL8","K3"="OL9"} 
+	        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+			Commandline argument inputs
+
+Listname => ["D1","D2","D3","D4","D5"]	Vs    dictname => {"K1" = "D1","K2" = "D2","K3" = "D3"}
+	       0     1      2        3      4		               
+
+Listname[index]			         dictname[Input_Key]
+
+Listname[0]  =>"D1"			          dictname["K1"] =>"D1"
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+	
+Write a terraform config files 
+ - variable.tf 
+           |- type is list => list of servers 
+ - output.tf 
+           |-> display 1st index server name to monitor
+
+
+[root@krosumlabs D4]# cat -n variables.tf
+     1  variable "demo" {
+     2          default = ["OL5","OL6","OL7","OL8"]
+     3          type = list
+     4  }
+[root@krosumlabs D4]# cat -n outputs.tf
+     1  output result1{
+     2          value = var.demo[1]
+     3  }
+     4  output result2{
+     5          value = "Selected server name is:${var.demo[1]}"
+     6  }
+[root@krosumlabs D4]#
+[root@krosumlabs D4]# terraform plan
+
+Changes to Outputs:
+  + result1 = "OL6"
+  + result2 = "Selected server name is:OL6"
+
+ ------------------------------------------------------------------------------------------------------------------------------------------------
+[root@krosumlabs D4]# cat -n variables.tf
+     1  variable "demo" {
+     2          default = ["OL5","OL6","OL7","OL8"]
+     3          type = list
+     4  }
+     5  variable "netinfo" {
+     6          type = map
+     7          default = { "bootproto" = "dhcp",
+     8                      "defroute" = "yes",
+     9                      "onboot" = true }
+    10  }
+[root@krosumlabs D4]# cat -n outputs.tf
+     1  output result1{
+     2          value = var.demo[1]
+     3  }
+     4  output result2{
+     5          value = "Selected server name is:${var.demo[1]}"
+     6  }
+     7  output result3{
+     8          value = "onboot params ${var.netinfo["onboot"]} ${var.netinfo["bootproto"]}"
+     9  }
+[root@krosumlabs D4]#	
+[root@krosumlabs D4]# terraform plan
+
+Changes to Outputs:
+  + result1 = "OL6"
+  + result2 = "Selected server name is:OL6"
+  + result3 = "onboot params true dhcp"
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+file: main.tf
+-----------------
+resource "github_repository"  "myrepo1" {
+	name = "example-1"
+	description = "This repository is created by terraform"
+	visibility = "public"
+}
+
+file: provider.tf
+-----------------------
+terraform {
+  required_providers {
+    github = {
+      source = "integrations/github"
+      version = "5.31.0"
+    }
+  }
+}
+
+provider "github" {
+  token = "ghp_N7xjUGbN3fvCD3Fdv9Bs5safadxzLABcwKL0F1Ywq" 
+}
+
+----------------------------------------------------------------------------------------------------------------------------------------------
+To generate a token
+---------------------------
+github.com => settings =>Developer settings =>Personal Access Token(PAT) =>Tokens(Classic)
+							    ||
+							  Generate new token
+-----------------------------------------------------------------------------------------------------------------------------------------------
+OCI 
+ - VCN
+ - Public and Private Subnet
+ - Object Storage 
+ - Load Balancer
+ - Filesystem
+----------------------------------------------------------------------------------------------------------------------------------------------------

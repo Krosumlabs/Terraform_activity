@@ -1,0 +1,585 @@
+Recap
+----------
+VCN
+ OCI /16 through /30
+ oci_core_vcn 
+
++--------------------------+
+|    DC
+|   |-------------------
+|   |  |------------
+   |  |  subnet
+   |_____________
+       AD
+|vcn
+|---------------
++----------region ---------+
+
+ => oci_core_vcn
+ 	=> oci_identity_availability_domain - data
+ => oci_core_internet_gateway
+ => oci_core_route_table 
+ => oci_core_subnet
+---------------------------------------------------------------------------------------------------------------------------
+Find out TF module => Refer terrform registery => module documentation => module arguments
+
+module arguments
+ ----------------------
+     |- required  Vs optional 
+        ^^^^^^^
+    |- attribute and value => Key = value
+
+oci terraform -> github
+      
+---------------------------------------------------------------------------------------------------------------------------
+Activity - Creating a VCN with components 
+----------------------------------------------------------
+=> We will create a new VCN with public subnet along with InternetGateWay ,Security list route tables
+
+cd {enter} # take you login path
+pwd {Enter}
+/home/opc 
+opc@terraformserver~]$ vi .bashrc {Enter}
+  export TF_VAR_tenancy_ocid="ocid1.tenancy.oc1..aaaaaaaa753kybqghsysdfgx66fziyjefpst5pgpbghwpr3bgbu7glwvq"
+ export TF_VAR_user_ocid="ocid1.user.oc1..aaaaaaaaiimleui56otui4a43il7mlntpgknwsdfftjrmzj2v26dalwhj3rolgq"
+ export TF_VAR_fingerprint="f8:0c:9f:d0:50:0e:83:bg:35:73:21:dc:05:b2:1f:4c"
+ export TF_VAR_private_key_path="/home/opc/.oci/oci_api_key.pem"
+ export TF_VAR_compartment_ocid="ocid1.compartment.oc1..aaaaaaaalvcwtmrqx2r4jmhlsdfsid6vqrfdq2ikngczi4ga4gdn3sfaa2p53cq"
+ export TF_VAR_region="eu-frankfurt-1"
+ export TF_VAR_AD="1"
+:wq
+
+opc@terraformserver~]$ source .bashrc {Enter}
+
+
+opc@terraformserver~]$ mkdir  vcn-activity
+opc@terraformserver~]$ cd vcn-activity
+opc@terraformserver vcn-activity]$ touch main.tf variables.tf providers.tf 
+opc@terraformserver vcn-activity]$ vi providers.tf 
+       provider "oci" {
+         region           = var.region
+         tenancy_ocid     = var.tenancy_ocid
+         user_ocid          = var.user_ocid
+         fingerprint      = var.fingerprint
+         private_key_path = var.private_key_path
+      }
+ :wq 
+ opc@terraformserver vcn-activity]$
+
+
+ opc@terraformserver vcn-activity]$ vi variables.tf {Enter}
+       variable "tenancy_ocid" {}
+       variable "user_ocid" {}
+       variable "fingerprint" {}
+       variable "private_key_path" {}
+       variable "compartment_ocid" {}
+       variable "region" {}
+       variable "AD" {}
+  :wq
+ 
+   opc@terraformserver vcn-activity]$ vi main.tf {Enter}
+     data "oci_identity_availability_domains" "ADs" {
+        compartment_id = var.tenancy_ocid
+     }
+      variable "VCN-terraform" {
+          default = "10.0.0.0/16"
+     }
+     resource "oci_core_vcn" "tf-vcn" {
+        cidr_block     = var.VCN-terraform
+        compartment_id = var.compartment_ocid
+        display_name   = "terraform-vcn"
+     }
+     # create a new InternetGateway
+         resource "oci_core_internet_gateway" "terraform-ig" {
+        compartment_id = var.compartment_ocid
+        display_name   = "terraform-internet-gateway"
+        vcn_id         = oci_core_vcn.tf-vcn.id
+    }
+      
+     # create a new route table
+          resource "oci_core_route_table" "terraform-rt" {
+          compartment_id = var.compartment_ocid
+          display_name   = "terraform-route-table"
+          vcn_id         = oci_core_vcn.tf-vcn.id
+          route_rules {
+             cidr_block        = "0.0.0.0/0"
+             network_entity_id = oci_core_internet_gateway.terraform-ig.id
+       }
+     }
+     # create a public subnet 1 in AD1
+     resource "oci_core_subnet" "terraform-public-subnet1" {
+       availability_domain = lookup(data.oci_identity_availability_domains.ADs.availability_domains[var.AD - 1], "name")
+       cidr_block          = "10.0.1.0/24"
+       display_name        = "terraform-public-subnet"
+        compartment_id      = var.compartment_ocid
+        vcn_id              = oci_core_vcn.tf-vcn.id
+    
+        route_table_id = oci_core_route_table.terraform-rt.id
+      }
+    :wq
+  
+   opc@terraformserver vcn-activity]$ terraform fmt {Enter}
+   
+   opc@terraformserver vcn-activity]$ terraform init  {Enter}
+   
+   opc@terraformserver vcn-activity]$  terraform plan {Enter}    # terraform plan -out vcnplan # vcnplan is user defined filename 
+   
+   opc@terraformserver vcn-activity]$  terraform apply  {Enter} # terraform apply vcnplan  # vcnplan is user defined filename 
+
+-------------------------------------------------------------------------------------------------------------------
+
+
+
+	[vcn]
+
+ opc
+ -----
+ main.tf  ==========>  [ vcn ] //OCI
+			R+
+opc				student
+no code 				 ...
+				import resource - id
+
+----------------------------------------------------------------------------------------------------------------------------
+  TFClass/
+            |__D1/ main.tf   
+	     resource oci_core_comput "oci" {}      tfstate => oci updated
+	     resource aws_instance  "aws" {}------------------- appended     				
+----------------------------------------------------------------------------------------------------------------------------
+Activity - Creation of Public and Private subnet Along with NAT Gateway 
+
+- Resource 		TF modules
+   - create a VCN 	=>  oci_core_vcn  (or) oci_core_virtual_network  
+   - create a NATGateway => oci_core_nat_gateway 
+   - create a internet Gateway => oci_core_internet_gateway
+   - create a new Route Table => oci_core_route_table 
+   - create a private subnet  =>    oci_core_subnet 
+   
+file: main.tf
+------------------
+
+data "oci_identity_availability_domains" "ADs" {
+  compartment_id = var.tenancy_ocid
+}
+
+variable "VCN-terraform" {
+  default = "10.0.0.0/16"
+}
+resource "oci_core_vcn" "tf-vcn" {
+  cidr_block     = var.VCN-terraform
+  compartment_id = var.compartment_ocid
+  display_name   = "terraform-vcn"
+}
+# create a new NAT Gateway
+resource "oci_core_nat_gateway" "terraform-NAT-gateway" {
+  compartment_id = var.compartment_ocid
+  display_name   = "terraform-NAT-gateway"
+  vcn_id         = oci_core_vcn.tf-vcn.id
+}
+# create a new InternetGateway
+resource "oci_core_internet_gateway" "terraform-ig" {
+  compartment_id = var.compartment_ocid
+  display_name   = "terraform-internet-gateway"
+  vcn_id         = oci_core_vcn.tf-vcn.id
+}
+# create a new route table
+resource "oci_core_route_table" "terraform-rt" {
+  compartment_id = var.compartment_ocid
+  display_name   = "terraform-route-table"
+  vcn_id         = oci_core_vcn.tf-vcn.id
+  route_rules {
+    cidr_block        = "0.0.0.0/0"
+    network_entity_id = oci_core_internet_gateway.terraform-ig.id
+  }
+}
+# create a public subnet 1 in AD1
+resource "oci_core_subnet" "terraform-public-subnet1" {
+  availability_domain = lookup(data.oci_identity_availability_domains.ADs.availability_domains[var.AD - 1], "name")
+  cidr_block          = "10.0.1.0/24"
+  display_name        = "terraform-public-subnet"
+  compartment_id      = var.compartment_ocid
+  vcn_id              = oci_core_vcn.tf-vcn.id
+  route_table_id      = oci_core_route_table.terraform-rt.id
+}
+
+
+# create a private subnet 1 in AD2 in the new VCN
+resource "oci_core_subnet" "terraform-private-subnet1" {
+  availability_domain = lookup(data.oci_identity_availability_domains.ADs.availability_domains[var.AD - 1], "name")
+  cidr_block          = "10.0.0.0/24"
+  display_name        = "terraform-private-subnet"
+  compartment_id      = var.compartment_ocid
+  vcn_id              = oci_core_vcn.tf-vcn.id
+  route_table_id      = oci_core_route_table.terraform-rt.id
+  prohibit_public_ip_on_vnic = true
+}
+----------------------------------------------------------------------------------------------------------------------------------
+OCI - storage 
+
+1. Object storage 	-  data to which frequent access  - datasets,images,videos - content type
+2. Archive storage	-  rarely need access - long periods of time - Larget datasets,Logs
+
+1. object	- data  
+2. bucket   - object is stored in a bucket - logical container 
+3. namespace  - logical entity 
+
+TF module => oci_objectstorage_bucket 
+----------------------------------------------------------------------------------------------------------------------------------
+File Storage 
+ - to store general purpose file storage
+ - Big data
+ - Application (like Enterprise Applications, peoplesoft)
+ - Databases 
+ - Backup
+ - Microservices and Docker 
+follow network filesystem(NFS)
+
+File system 
+ - Data structure - holding the meta data info - info about storage 
+ - NFS
+      |=>export  and mount 
+ - Export options + snapshot + encryption
+
+TF module => oci_file_storage_file_system
+	      oci_file_storage_export 
+	      oci_file_storage_mount_target
+
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+Host01	<==============network================> Host02
+- nfs server					              - client
+- export /D1				               mount serverIP:/D1    /D2	
+						df -Th		
+						serverIP:/D1  nfs4	..	/D2
+						
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+Activity - Creating a File System
+----------
+TF modules - oci_file_storage_file_system
+	      oci_file_storage_export_set 
+	      oci_file_storage_mount_target
+
+resource "oci_file_storage_export_set" "export_set" {
+   mount_target_id = oci_file_storage_mount_target.test_mount.id
+}
+
+resource "oci_file_storage_mount_target" "test_mount" {
+availability_domain = ""
+compartment_id = ""
+subnet_id = ""
+}
+
+resource "oci_file_storage_file_system" "test_file_system" {
+
+}
+
+
+resource "oci_file_storage_export" "test_export" {
+export_set_id = oci_file_storage_mount_target.test_mount.export_set_id
+file_system_id = oci_file_storage_file_system.test_file_system.id
+path = "/TF"
+export_options =  [ 
+	{
+	  source = "0.0.0.0/0"
+	 access  = "READ_WRITE"
+	},
+	{
+	    source = "0.0.0.0/0"
+	    access  = "READ_ONLY"
+ 	 }	
+]
+}
+---------------------------------------------------------------------------------------------------------------------------
+File: main.tf
+-------------------
+data "oci_identity_availability_domains" "ADs" {
+  compartment_id = var.tenancy_ocid
+}
+
+variable "VCN-terraform" {
+  default = "10.0.0.0/16"
+}
+resource "oci_core_vcn" "tf-vcn" {
+  cidr_block     = var.VCN-terraform
+  compartment_id = var.compartment_ocid
+  display_name   = "terraform-vcn"
+}
+# create a new NAT Gateway
+resource "oci_core_nat_gateway" "terraform-NAT-gateway" {
+  compartment_id = var.compartment_ocid
+  display_name   = "terraform-NAT-gateway"
+  vcn_id         = oci_core_vcn.tf-vcn.id
+}
+# create a new InternetGateway
+resource "oci_core_internet_gateway" "terraform-ig" {
+  compartment_id = var.compartment_ocid
+  display_name   = "terraform-internet-gateway"
+  vcn_id         = oci_core_vcn.tf-vcn.id
+}
+# create a new route table
+resource "oci_core_route_table" "terraform-rt-1" {
+  compartment_id = var.compartment_ocid
+  display_name   = "terraform-route-table-1"
+  vcn_id         = oci_core_vcn.tf-vcn.id
+  route_rules {
+    cidr_block        = "0.0.0.0/0"
+    network_entity_id = oci_core_internet_gateway.terraform-ig.id
+  }
+}
+# create a new route table
+resource "oci_core_route_table" "terraform-rt-2" {
+  compartment_id = var.compartment_ocid
+  display_name   = "terraform-route-table-2"
+  vcn_id         = oci_core_vcn.tf-vcn.id
+  route_rules {
+    cidr_block        = "0.0.0.0/0"
+    network_entity_id = oci_core_nat_gateway.terraform-NAT-gateway.id
+  }
+}
+# create a public subnet 1 in AD1
+resource "oci_core_subnet" "terraform-public-subnet1" {
+  availability_domain = lookup(data.oci_identity_availability_domains.ADs.availability_domains[var.AD - 1], "name")
+  cidr_block          = "10.0.1.0/24"
+  display_name        = "terraform-public-subnet"
+  compartment_id      = var.compartment_ocid
+  vcn_id              = oci_core_vcn.tf-vcn.id
+  route_table_id      = oci_core_route_table.terraform-rt-1.id
+}
+
+
+# create a private subnet 1 in AD2 in the new VCN
+resource "oci_core_subnet" "terraform-private-subnet1" {
+  availability_domain        = lookup(data.oci_identity_availability_domains.ADs.availability_domains[var.AD - 1], "name")
+  cidr_block                 = "10.0.0.0/24"
+  display_name               = "terraform-private-subnet"
+  compartment_id             = var.compartment_ocid
+  vcn_id                     = oci_core_vcn.tf-vcn.id
+  route_table_id             = oci_core_route_table.terraform-rt-2.id
+  prohibit_public_ip_on_vnic = true
+  dhcp_options_id            = oci_core_vcn.tf-vcn.default_dhcp_options_id
+}
+
+resource "oci_file_storage_mount_target" "test_mount_target" {
+  availability_domain = lookup(data.oci_identity_availability_domains.ADs.availability_domains[var.AD - 1], "name")
+  compartment_id      = var.compartment_ocid
+  subnet_id           = oci_core_subnet.terraform-public-subnet1.id
+}
+resource "oci_file_storage_export_set" "test_export_set" {
+  mount_target_id = oci_file_storage_mount_target.test_mount_target.id
+  display_name    = "terraform export"
+}
+resource "oci_file_storage_file_system" "test_file_system" {
+  availability_domain = lookup(data.oci_identity_availability_domains.ADs.availability_domains[var.AD - 1], "name")
+  compartment_id      = var.compartment_ocid
+  display_name        = "terraform_filesystem"
+}
+resource "oci_file_storage_export" "test_export" {
+  export_set_id = oci_file_storage_mount_target.test_mount_target.export_set_id
+  file_system_id = oci_file_storage_file_system.test_file_system.id
+  path          = "/terraform_filesystem"
+}
+
+--------------------------------------------------------------------------------------------------------------------------------------------
+OL => installation
+	|
+	mount the image => minimal version 	 [] =>multi-user.target
+		               Graphical User Interface [] => GUI = graphical.target
+		        => package selection
+		        => partitions 
+			 - standard partition
+			 - LVM
+		         => Network configuration
+		         => ..
+
+resource "oci_core_instance"  "" {
+	count = 
+	availablility_domain =
+	compartment_id =
+	shape =	
+	subnet_id
+	assign_public_ip = true
+	hostname = ..
+	...	
+}
+resource "oci_core_route_table"  ""{
+	compartment_id =""
+	vcn_id 
+	route_rules {
+		
+	}
+}
+resource "oci_core_subnet" ""{
+
+}
+resource "oci_core_vcn" "" {
+	..
+}
+resource "oci_core_internet_gateway" ""{
+	...
+}
+---------------------------------------------------------------------------------------------------------------------------------------------------
+Create a compute Instance 
+- vcn
+
+data "oci_identity_availability_domains" "ADs" {
+  compartment_id = var.tenancy_ocid
+}
+
+variable "InstanceShape" {
+ default = "VM.Standard.A1.Flex"
+}
+variable "NumInstances" {
+  default = "1"
+}
+variable "InstanceImageOCID" {
+ type = map(string)
+ default = {
+   "eu-frankfurt-1" =  "ocid1.image.oc1.eu-frankfurt-1.aaaaaaaa6jjgcx2qpymai4zk3pw64v7bsalk5csshkwa6debumbyuazg3ela"
+}
+}
+resource "oci_core_instance" "TFInstance" {
+availability_domain = lookup(data.oci_identity_availability_domains.ADs.availability_domains[var.AD - 1], "name")
+compartment_id =var.compartment_id
+count = var.NumInstances
+display_name = "TF-Instance"
+shape = var.InstanceShape
+create_vnic_details {
+   subnet_id =oci_core_subnet
+  display = "primarynic"
+  assign_public_ip = true
+  hostname_label = "TF-instance"
+}
+source_details {
+  source_type = "image"
+  source_id = var.InstanceImageOCID[var.region]
+}
+}
+resource "oci_core_internet_gateway" "igway"{
+ compartment_id = var.compartment_id
+ display_name = "TF InternetGateway"
+vcn_id = oci_core_vcn.TFVCN.id
+}
+resource "oci_core_route_table" "TFRT" {
+ compartment_id = var.compartment_id
+ vcn_id = oci_core_vcn.TFVCN.id
+display_name = "TF RouteTable" 
+route_rules {
+	cidr_block = "0.0.0.0/0"
+	network_entity_id = oci_core_internet_gateway.igway.id
+  } 
+}
+resource "oci_core_subnet" "TFsubnet" {
+ availability_domain = lookup(data.oci_identity_availability_domains.ADs.availability_domains[var.AD - 1], "name")
+ cidr_block = "10.1.20.0/24"
+display_name =  "TF-subnet"
+dns_label = "tfsubnet"
+compartment_id = var.compartment_ocid
+vcn_id = oci_core_vcn.TFVCN.id
+route_table_id =  oci_core_route_table.TFRT.id
+dhcp_options_id =oci_core_vcn.TFVCN.default_dhcp_options_id
+}
+
+resource "oci_core_vcn" "TFVCN" {
+ cidr_block = "10.1.0.0/16"
+ compartment_id = var.compartment_ocid
+ display_name = "TF-VCN"
+ dns_label = "TFVCNDNS"
+}
+-----------------------------------------------------------
+file: main.tf
+
+data "oci_identity_availability_domains" "ADs" {
+  compartment_id = var.tenancy_ocid
+}
+
+variable "InstanceShape" {
+  default = "VM.Standard.A1.Flex"
+}
+variable "NumInstances" {
+  default = "1"
+}
+variable "InstanceImageOCID" {
+  type = map(string)
+  default = {
+    "eu-frankfurt-1" = "ocid1.image.oc1.eu-frankfurt-1.aaaaaaaa6jjgcx2qpymai4zk3pw64v7bsalk5csshkwa6debumbyuazg3ela"
+  }
+}
+resource "oci_core_instance" "TFInstance" {
+  availability_domain = lookup(data.oci_identity_availability_domains.ADs.availability_domains[var.AD - 1], "name")
+  compartment_id      = var.compartment_ocid
+  count               = var.NumInstances
+  display_name        = "TF-Instance"
+  shape               = var.InstanceShape
+  create_vnic_details {
+    subnet_id        = oci_core_vcn.TFVCN.id
+    #display          = "primarynic"
+    assign_public_ip = true
+    hostname_label   = "TF-instance"
+  }
+  source_details {
+    source_type = "image"
+    source_id   = var.InstanceImageOCID[var.region]
+  }
+}
+resource "oci_core_internet_gateway" "igway" {
+  compartment_id = var.compartment_ocid
+  display_name   = "TF InternetGateway"
+  vcn_id         = oci_core_vcn.TFVCN.id
+}
+resource "oci_core_route_table" "TFRT" {
+  compartment_id = var.compartment_ocid
+  vcn_id         = oci_core_vcn.TFVCN.id
+  display_name   = "TF RouteTable"
+  route_rules {
+    cidr_block        = "0.0.0.0/0"
+    network_entity_id = oci_core_internet_gateway.igway.id
+  }
+}
+resource "oci_core_subnet" "TFsubnet" {
+  availability_domain = lookup(data.oci_identity_availability_domains.ADs.availability_domains[var.AD - 1], "name")
+  cidr_block          = "10.1.20.0/24"
+  display_name        = "TF-subnet"
+  dns_label           = "tfsubnet"
+  compartment_id      = var.compartment_ocid
+  vcn_id              = oci_core_vcn.TFVCN.id
+  route_table_id      = oci_core_route_table.TFRT.id
+  dhcp_options_id     = oci_core_vcn.TFVCN.default_dhcp_options_id
+}
+
+resource "oci_core_vcn" "TFVCN" {
+  cidr_block     = "10.1.0.0/16"
+  compartment_id = var.compartment_ocid
+  display_name   = "TF-VCN"
+  dns_label      = "TFVCNDNS"
+}
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+
+[opc@instance-20230719-1408 ~]$ terraform console
+> max(10,20,30)
+30
+> chomp("welcome\n")
+"welcome"
+> chomp("welcome\t")
+"welcome\t"
+> chomp("welcome\r")
+"welcome"
+> chomp("welcome ")
+"welcome "
+> join("-",["server1","server2"])
+"server1-server2"
+>
+
+> split("-","server1-server2")
+tolist([
+  "server1",
+  "server2",
+])
+> length("abc")
+3
+>
+------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Ref: https://github.com/orgs/oracle-terraform-modules/repositories?type=all
+---------------------------------------------------------------------------------------------------------------------------------------------------

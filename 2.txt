@@ -1,0 +1,350 @@
+Data Block
+---------------
+Data Block (or) Data Sources allows TF to use information defined outside of TF.
+
+data "<blockLabel>" "<blockLabel>" {		resource "<blockLabel>" "<BlockLabel>"{
+				Vs
+
+}					}
+					---------------------------
+					 TF - manage 
+
+		
+TF reads data sources during the planning phase - apply 
+     ------------------------
+      data.<parameterName>
+
+data "oci_user" "name" {	resource  "oci_user" "n1"{
+   status = true			user=data.oci_user.name.status
+}			}
+			variable "myvar"{
+				default = data.oci_user.name.status
+			}
+
+data.<TYPE>.<NAME>.<Attribute>
+---------------------------------------------------------------------------------------------------------------------------------------------------
+env variable 
+----------------
+   |
+export TF_VAR_<userdefinedvariable>
+  (or)
+set  TF_VAR_<userdefinedvariable>
+----------------------------------------------------------------------------------------------
+variable myvar {
+     default = 10
+}
+variable myapp {}
+output result1{
+	value = var.myvar   => 10
+}
+output result2{
+	value = var.myapp  =>Flask
+}
+-----------------------------------
+terraform plan 
+Enter a app name: Flask
+
+variable myvar {
+     default = 10
+}
+variable myapp {}
+output result1{
+	value = var.myvar   => 10
+}
+output result2{
+	value = var.myapp  =>testapp
+}			
+terraform plan -var "myapp=testapp" {enter}
+
+vi /root/.bashrc 
+export TF_VAR_myapp="Django"
+:wq
+
+variable myvar {
+     default = 10
+}
+variable myapp {}
+output result1{
+	value = var.myvar   => 10
+}
+output result2{
+	value = var.myapp  =>Django
+}			
+terraform plan
+
+------------------------------------------------------------------------------------------------------------------------------------------
+TF variable precedence 
+	commandline 	=>   -var="myvar=value"
+	|
+	auto.tfvars
+	|
+	terraformvars.json
+	|
+	terraform.tfvars 
+	|
+	Environment variable	=> TF_VAR_<variable>
+	|
+	variables.tf
+	|
+	Interactive input
+	|
+	Module Invocation 
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+TFClass/
+       |__case1/ main.tf  variables.tf
+       |__case2/ main.tf  variables.tf
+       |__case3/ main.tf  variables.tf
+
+------------------------------------------------------------------------------------------------------------------------------
+Terraform server m/c 
+----------------------------
+Generate SSH Keys 
+  |
+OCI - TF
+
+user10  => C10
+user13 =>C13 
+ |
+Germany Frankfurt 
+ |
+Ampire
+--------------------------------------------------------------------------------------------------------------------------
+Activity 
+----------
+ssh -i <path-of-pub-ssh-key> opc@<IP Address>
+[opc@terraformserver ~]$ 
+[opc@terraformserver ~]$  sudo su -  {Enter}
+
+root@terraformserver ~]#				
+
+root@terraformserver ~]#  passwd {Enter}
+New password: <Enter your password>
+Retype new password:<Enter your password>
+
+# enable permit root login 
+root@terraformserver ~]# vi /etc/ssh/sshd_config {enter}
+ 
+ PermitRootLogin  yes
+ PasswordAuthentication yes
+:wq
+root@terraformserver ~]# systemctl restart sshd 
+
+root@terraformserver ~]# wget https://releases.hashicorp.com/terraform/1.5.3/terraform_1.5.3_linux_arm64.zip
+
+root@terraformserver ~]# unzip terraform_1.5.3_linux_arm64.zip 
+
+root@terraformserver ~]# mv terraform /usr/local/bin 
+root@terraformserver ~]# terraform {Enter}
+-------------------------------------------------------------------------------------------------------------------------------
+Collect the required OCIDs for Terraform 
+Tenant - username and password
+Compartment ID
+
+In the web console => Click Menu => Identity => Compartments  => copy OCID and paste into notepad
+				   => users =>user_ocid => copy the OCID and paste into notepad
+				
+Fetch finger print details under the API Keys section. => Copy the fingerprint and paste into notepad 
+
+Click =>Top Right Side User Icon => Tenancy => Copy Tenancy OCID  and paste into notepad 
+
+user=ocid1.user.oc1..aaaaaaaa6275pjrfbixqkb4ykjxtfxhpum4wmworwimh3vtwtc4e36wh7eqq
+fingerprint=15:8f:9c:ad:df:f2:a2:54:31:dd:ef:16:c6:65:13:97
+tenancy=ocid1.tenancy.oc1..aaaaaaaa753kybqghsyuluysjgx66fziyjefpst5pgpbghwpr3bgbu7glwvq
+region=eu-frankfurt-1
+key_file=<path to your private keyfile> # TODO				
+						
+---------------------------------------------------------------------------------------------------------------------------------------------------
+Configure the Terraform server with your OCI 
+The default configuration file name is ~/.oci/config 
+if .oci directory is not available, create it.
+
+opc@terraformserver ~]$ cd ~/.oci <== if its not exists - create  a .oci directory 
+		     mkdir ~/.oci
+		     cd ~/.oci 
+		     openssl  genrsa -out  ~/.oci/oci_api_key.pem 2048 <== Generating RSA private key, 2048 bit long 
+		     chmod go-rwx  ~/.oci/oci_api_key.pem
+		    openssl rsa -pubout -in  ~/.oci/oci_api_key.pem   -out   ~/.oci/oci_api_key_public.pem
+# writing RSA
+		   cd ~/.oci
+		  ls -l
+		   openssl rsa -pubout -outform DER -in  ~/.oci/oci_api_key.pem|openssl md5 -c 
+
+# copy the generated key to a notepad 
+opc@terraformserver~]$  cat  ~/.oci/oci_api_key_public.pem 
+			
+copy the contents of oci_api_key_public.pem 
+Go to OCI web console  and upload the public key  ( ~/.oci/oci_api_key_public.pem) 
+Menu => Identity =>Users =>API Keys(left panel) =>Add public Key =>paste the contents of  oci_api_key_public.pem 
+then click Add.
+-------------------------------------------------------------------------------------------------------------------------------------------------
+
+ocid1.compartment.oc1..aaaaaaaalvcwtmrqx2r4jmhlid6vqrvuaq2ikngczi4ga4gdn3sfaa2p53cq
+
+ocid1.user.oc1..aaaaaaaaiimleui56otui4a43il7mlntpgknwftjrmzj2v26dalwhj3rolgq
+
+fingerprint=1d:5d:ea:be:ea:d6:88:22:9b:19:82:ad:1f:3f:f2:39
+
+
+[DEFAULT]
+user=ocid1.user.oc1..aaaaaaaaiimleui56otui4a43il7mlntpgknwftjrmzj2v26dalwhj3rolgq
+fingerprint=1d:5d:ea:be:ea:d6:88:22:9b:19:82:ad:1f:3f:f2:39
+tenancy=ocid1.tenancy.oc1..aaaaaaaa753kybqghsyuluysjgx66fziyjefpst5pgpbghwpr3bgbu7glwvq
+region=eu-frankfurt-1
+key_file=<path to your private keyfile> # TODO
+
+------------------------------------------------------------------------------------------------------------------------------
+f8:0c:9f:c0:50:0e:83:bf:35:73:21:dc:05:b2:1f:4c
+
+
+-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4GafoOWhnZ4OlLGvlj6B
+4BBk+3EohMTX/8X+7zkPP9bpF/CcjBicreOHRPIEyrp/dRoyp2g3KBEOkkc/hE89
+kxKVTMw9ami40cSSc6ei9T0kbLlfUWsPdwrn3SOqWfx6rgNpLuiZMWE8qKcFAJHb
+mqfO3+/PXn5vHC/zVheDC2GrQjc7Y7s5dxD9Tv9EhuD4B6+IzmTmtxr6VgM7TYA+
+x3rkXN5OHJDKP/4PSd5SuIIAhUR9lcnwx6qHlfUN6FFUW57XWZ3mqamH2L7Nyk1k
+rbSDYNp7PVPaCQcRZgs9kOCDj5V5GNiDK91VoU6JNoVuupboEEHvZvVNPX9f4BVD
+AQIDAQAB
+-----END PUBLIC KEY-----
+-------------------------------------------------------------------------------------------------------------------------------------------
+[opc@instance-20230719-1408 vcn]$ cat vcn.tf
+provider "oci"{
+        version = ">=5.1"
+        tenancy_ocid = "ocid1.tenancy.oc1..aaaaaaaa753kybqghsyuluysjgx66fziyjefpst5pgpbghwpr3bgbu7glwvq"
+        user_ocid = "ocid1.user.oc1..aaaaaaaaiimleui56otui4a43il7mlntpgknwftjrmzj2v26dalwhj3rolgq"
+        fingerprint = "1d:5d:ea:be:ea:d6:88:22:9b:19:82:ad:1f:3f:f2:39"
+        private_key_path = "/home/opc/.oci/oci_api_key.pem"
+        region = "eu-frankfurt-1"
+}
+[opc@instance-20230719-1408 vcn]$
+
+-------------------------------------------------------------------------------------------------------------------------------------------
+Lab set up
+--------------
+ OCI => oci web console // => instance (Linux) 
+			|_download private key	
+			|__IPAddress
+			|__ Linux act as Terraform server - downloaded terraform file 
+						 move terraform file into /usr/local/bin
+						
+winx    - 	puttygen =>privatekey =>ppk file =>putty - auth ppkfile - putty session - IP -> ....
+		(or)
+C:\> ssh -i <privatekey-file> opc@IPAddress   
+Linux  -
+mac -
+
+Linux (Terraform server) <=============> oci 
+		|--------------------------------compute vcn LB ....
+		|--------------------------------
+
+user - file.tf - terraform  -  provider plugin + api  - provider resource(cloud,vm,github etc.,)
+		      ---------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------
+terraform plan 
+|
+terraform apply
+Vs
+terraform  plan -out  vcn.log
+terraform apply vcn.log 
+-----------------------------------------------------------------------------------------------------------------------------------------------		
+Create a new VCN with public subnet along with IGW
+|
+Availability Domain  - Data source block  
+
+create a new VCN => oci_core_vcn
+create a new Gateway => oci_core_internet_gateway
+create a new Routing table =>oci_core_route_table 
+|
+export all provider ocids to env variable 
+|
+cd {Enter} # login path
+vi .bashrc {Enter}
+
+export TF_VAR_tenancy_ocid="" 
+....
+---------------------------------------------------------------------------------------------------------------------------------------------------
+vcn activity
+---------------
+[opc@instance-20230719-1408 vcn-activity]$ cat /home/opc/.bashrc 
+
+    20  export TF_VAR_tenancy_ocid="ocid1.tenancy.oc1..aaaaaaaa753kybqghsysdfgx66fziyjefpst5pgpbghwpr3bgbu7glwvq"
+    21  export TF_VAR_user_ocid="ocid1.user.oc1..aaaaaaaaiimleui56otui4a43il7mlntpgknwsdfftjrmzj2v26dalwhj3rolgq"
+    22  export TF_VAR_fingerprint="f8:0c:9f:d0:50:0e:83:bg:35:73:21:dc:05:b2:1f:4c"
+    23  export TF_VAR_private_key_path="/home/opc/.oci/oci_api_key.pem"
+    24  export TF_VAR_compartment_ocid="ocid1.compartment.oc1..aaaaaaaalvcwtmrqx2r4jmhlsdfsid6vqrfdq2ikngczi4ga4gdn3sfaa2p53cq"
+    25  export TF_VAR_region="eu-frankfurt-1"
+    26  export TF_VAR_AD="1"
+[opc@instance-20230719-1408 vcn-activity]$
+
+
+
+
+[opc@instance-20230719-1408 vcn-activity]$ cat -n provider.tf
+     1  provider "oci" {
+     2    region           = var.region
+     3    tenancy_ocid     = var.tenancy_ocid
+     4    user_ocid          = var.user_ocid
+     5    fingerprint      = var.fingerprint
+     6    private_key_path = var.private_key_path
+     7  }
+[opc@instance-20230719-1408 vcn-activity]$
+
+[opc@instance-20230719-1408 vcn-activity]$ cat -n variable.tf
+     1  variable "tenancy_ocid" {}
+     2  variable "user_ocid" {}
+     3  variable "fingerprint" {}
+     4  variable "private_key_path" {}
+     5  variable "compartment_ocid" {}
+     6  variable "region" {}
+     7  variable "AD" {}
+     8
+
+
+
+[opc@instance-20230719-1408 vcn-activity]$ cat -n main.tf
+     1
+     2
+     3  data "oci_identity_availability_domains" "ADs" {
+     4    compartment_id = var.tenancy_ocid
+     5  }
+     6  variable "VCN-terraform" {
+     7    default = "10.0.0.0/16"
+     8  }
+     9  resource "oci_core_vcn" "tf-vcn" {
+    10    cidr_block     = var.VCN-terraform
+    11    compartment_id = var.compartment_ocid
+    12    display_name   = "terraform-vcn"
+    13  }
+    14  # create a new InternetGateway
+    15  resource "oci_core_internet_gateway" "terraform-ig" {
+    16    compartment_id = var.compartment_ocid
+    17    display_name   = "terraform-internet-gateway"
+    18    vcn_id         = oci_core_vcn.tf-vcn.id
+    19  }
+    20  # create a new route table
+    21  resource "oci_core_route_table" "terraform-rt" {
+    22    compartment_id = var.compartment_ocid
+    23    display_name   = "terraform-route-table"
+    24    vcn_id         = oci_core_vcn.tf-vcn.id
+    25    route_rules {
+    26      cidr_block        = "0.0.0.0/0"
+    27      network_entity_id = oci_core_internet_gateway.terraform-ig.id
+    28    }
+    29  }
+    30  # create a public subnet 1 in AD1
+    31  resource "oci_core_subnet" "terraform-public-subnet1" {
+    32    availability_domain = lookup(data.oci_identity_availability_domains.ADs.availability_domains[var.AD - 1], "name")
+    33    cidr_block          = "10.0.1.0/24"
+    34    display_name        = "terraform-public-subnet"
+    35    compartment_id      = var.compartment_ocid
+    36    vcn_id              = oci_core_vcn.tf-vcn.id
+    37
+    38    route_table_id = oci_core_route_table.terraform-rt.id
+    39  }
+    40
+    41
+[opc@instance-20230719-1408 vcn-activity]$
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
